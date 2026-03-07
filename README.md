@@ -26,12 +26,14 @@ For the largest model `Llama-2-70b-chat`, a minimum of 140GB VRAM (e.g 2xA100 80
 - OS: Windows, macOS, or Linux
 - CPU: Any modern processor (Intel i3 or higher, AMD Ryzen series)
 - RAM: 4 GB or more (8 GB recommended)
-- Python Version: Python 3.7 or higher
+- Python Version: Python 3.9 or higher
 
 ## Setup
 
 ```bash
 git clone https://github.com/eliaka/repeatedgames
 cd repeatedgames
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
