@@ -12,7 +12,7 @@ from openai import OpenAI
 # --- Configuration ---
 RUNPOD_API_KEY = os.environ.get("RUNPOD_API_KEY", "YOUR_RUNPOD_API_KEY")
 RUNPOD_ENDPOINT_URL = os.environ.get("RUNPOD_ENDPOINT_URL", "https://api.runpod.ai/v2/YOUR_ENDPOINT_ID/openai/v1")
-MODEL_NAME = os.environ.get("MODEL_NAME", "qwen/qwen2.5-3b-instruct")
+RUNPOD_MODEL_NAME = os.environ.get("RUNPOD_MODEL_NAME", "qwen/qwen2.5-3b-instruct")
 
 NUM_ROUNDS = 10
 NUM_REPETITIONS = 1  # Number of times to repeat each matchup
@@ -53,7 +53,7 @@ def act_qwen(text: str, round_num: int, opponent_last_move: str, max_retries: in
     for attempt in range(max_retries):
         try:
             response = client.chat.completions.create(
-                model=MODEL_NAME,
+                model=RUNPOD_MODEL_NAME,
                 max_tokens=1,
                 temperature=1.0,
                 messages=messages,
@@ -148,7 +148,7 @@ def play_game(agent_fn, opponent_fn, opponent_name: str) -> list[dict]:
 
         data.append({
             "round": round_num,
-            "player1": MODEL_NAME,
+            "player1": RUNPOD_MODEL_NAME,
             "player2": opponent_name,
             "answer1": agent_move,
             "answer2": opponent_move,
@@ -180,7 +180,7 @@ def main():
         print('='*60)
 
         for opponent_fn, opponent_name in opponents:
-            print(f"\n--- {MODEL_NAME} vs {opponent_name} ---")
+            print(f"\n--- {RUNPOD_MODEL_NAME} vs {opponent_name} ---")
             game_data = play_game(act_qwen, opponent_fn, opponent_name)
             for row in game_data:
                 row["repetition"] = rep
