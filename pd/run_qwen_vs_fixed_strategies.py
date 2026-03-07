@@ -54,7 +54,7 @@ def act_qwen(text: str, round_num: int, opponent_last_move: str, max_retries: in
             response = client.chat.completions.create(
                 model="qwen/qwen2.5-3b-instruct",
                 max_tokens=1,
-                temperature=0.0,
+                temperature=1.0,
                 messages=messages,
             )
             answer = response.choices[0].message.content.strip()
