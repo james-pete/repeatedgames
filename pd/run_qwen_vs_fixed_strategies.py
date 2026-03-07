@@ -12,6 +12,7 @@ from openai import OpenAI
 # --- Configuration ---
 RUNPOD_API_KEY = os.environ.get("RUNPOD_API_KEY", "YOUR_RUNPOD_API_KEY")
 RUNPOD_ENDPOINT_URL = os.environ.get("RUNPOD_ENDPOINT_URL", "https://api.runpod.ai/v2/YOUR_ENDPOINT_ID/openai/v1")
+MODEL_NAME = os.environ.get("MODEL_NAME", "qwen/qwen2.5-3b-instruct")
 
 NUM_ROUNDS = 10
 NUM_REPETITIONS = 1  # Number of times to repeat each matchup
@@ -52,7 +53,7 @@ def act_qwen(text: str, round_num: int, opponent_last_move: str, max_retries: in
     for attempt in range(max_retries):
         try:
             response = client.chat.completions.create(
-                model="qwen/qwen2.5-3b-instruct",
+                model=MODEL_NAME,
                 max_tokens=1,
                 temperature=1.0,
                 messages=messages,
@@ -147,7 +148,7 @@ def play_game(agent_fn, opponent_fn, opponent_name: str) -> list[dict]:
 
         data.append({
             "round": round_num,
-            "player1": "act_qwen",
+            "player1": MODEL_NAME,
             "player2": opponent_name,
             "answer1": agent_move,
             "answer2": opponent_move,
@@ -157,7 +158,7 @@ def play_game(agent_fn, opponent_fn, opponent_name: str) -> list[dict]:
             "total2": total_opponent,
         })
 
-        print(f"  Round {round_num}: Qwen={agent_move}, {opponent_name}={opponent_move} "
+        print(f"  Round {round_num}: Agent={agent_move}, {opponent_name}={opponent_move} "
               f"| Points: {agent_points}-{opponent_points} | Total: {total_agent}-{total_opponent}")
 
     return data
@@ -179,7 +180,7 @@ def main():
         print('='*60)
 
         for opponent_fn, opponent_name in opponents:
-            print(f"\n--- Qwen vs {opponent_name} ---")
+            print(f"\n--- {MODEL_NAME} vs {opponent_name} ---")
             game_data = play_game(act_qwen, opponent_fn, opponent_name)
             for row in game_data:
                 row["repetition"] = rep
@@ -198,7 +199,7 @@ def main():
         "total1": lambda x: x.iloc[-1] if len(x) > 0 else 0,
         "total2": lambda x: x.iloc[-1] if len(x) > 0 else 0,
     }).reset_index()
-    summary.columns = ["Opponent", "Qwen Total", "Opponent Total"]
+    summary.columns = ["Opponent", "Agent Total", "Opponent Total"]
     print(summary.to_string(index=False))
 
 
