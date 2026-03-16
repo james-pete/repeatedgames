@@ -11,19 +11,15 @@ import pandas as pd
 from openai import OpenAI
 
 # --- Configuration ---
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 RUNPOD_API_KEY = os.environ.get("RUNPOD_API_KEY", "YOUR_RUNPOD_API_KEY")
 RUNPOD_ENDPOINT_URL = os.environ.get("RUNPOD_ENDPOINT_URL", "https://api.runpod.ai/v2/YOUR_ENDPOINT_ID/openai/v1")
-RUNPOD_MODEL_NAME = os.environ.get("RUNPOD_MODEL_NAME", "qwen/qwen2.5-3b-instruct")
 
 NUM_ROUNDS = 10
 NUM_REPETITIONS = 1  # Number of times to repeat each matchup
 TEMPERATURE = 1  # Default, can be overridden via command line
-
-# --- RunPod Client Setup ---
-client = OpenAI(
-    api_key=RUNPOD_API_KEY,
-    base_url=RUNPOD_ENDPOINT_URL,
-)
+MODEL_NAME = "qwen/qwen2.5-3b-instruct"  # Default, can be overridden via command line
+client = None  # Set in main() based on --model argument
 
 # --- Fixed Strategies ---
 
@@ -48,14 +44,14 @@ def act_tit_for_tat(text: str, round_num: int, opponent_last_move: str) -> str:
 
 # --- LLM Agent ---
 
-def act_qwen(text: str, round_num: int, opponent_last_move: str, max_retries: int = 5) -> str:
-    """Query Qwen 2.5-3B-Instruct via RunPod API."""
+def act_llm(text: str, round_num: int, opponent_last_move: str, max_retries: int = 5) -> str:
+    """Query LLM via API."""
     messages = [{"role": "user", "content": text}]
     
     for attempt in range(max_retries):
         try:
             response = client.chat.completions.create(
-                model=RUNPOD_MODEL_NAME,
+                model=MODEL_NAME,
                 max_tokens=1,
                 temperature=TEMPERATURE,
                 messages=messages,
@@ -150,7 +146,7 @@ def play_game(agent_fn, opponent_fn, opponent_name: str) -> list[dict]:
 
         data.append({
             "round": round_num,
-            "player1": RUNPOD_MODEL_NAME,
+            "player1": MODEL_NAME,
             "player2": opponent_name,
             "answer1": agent_move,
             "answer2": opponent_move,
@@ -167,11 +163,20 @@ def play_game(agent_fn, opponent_fn, opponent_name: str) -> list[dict]:
 
 
 def main():
-    global TEMPERATURE
+    global TEMPERATURE, MODEL_NAME, client
     parser = argparse.ArgumentParser(description="Run Prisoner's Dilemma experiments")
     parser.add_argument("--temperature", type=float, default=1, help="Temperature for LLM sampling (default: 1)")
+    parser.add_argument("--model", type=str, default="qwen/qwen2.5-3b-instruct", help="Model to use (default: qwen/qwen2.5-3b-instruct, or use gpt-4 for OpenAI)")
     args = parser.parse_args()
     TEMPERATURE = args.temperature
+    MODEL_NAME = args.model
+
+    if MODEL_NAME.startswith("gpt"):
+        if not OPENAI_API_KEY:
+            raise ValueError("OPENAI_API_KEY environment variable must be set to use GPT models")
+        client = OpenAI(api_key=OPENAI_API_KEY)
+    else:
+        client = OpenAI(api_key=RUNPOD_API_KEY, base_url=RUNPOD_ENDPOINT_URL)
 
     opponents = [
         (act_defect, "act_defect"),
@@ -188,8 +193,8 @@ def main():
         print('='*60)
 
         for opponent_fn, opponent_name in opponents:
-            print(f"\n--- {RUNPOD_MODEL_NAME} vs {opponent_name} ---")
-            game_data = play_game(act_qwen, opponent_fn, opponent_name)
+            print(f"\n--- {MODEL_NAME} vs {opponent_name} ---")
+            game_data = play_game(act_llm, opponent_fn, opponent_name)
             for row in game_data:
                 row["repetition"] = rep
             all_data.extend(game_data)
