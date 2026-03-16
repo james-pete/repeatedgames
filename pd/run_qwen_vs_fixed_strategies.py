@@ -48,14 +48,24 @@ def act_llm(text: str, round_num: int, opponent_last_move: str, max_retries: int
     """Query LLM via API."""
     messages = [{"role": "user", "content": text}]
     
+    # Newer OpenAI models (gpt-5, o1, o3, etc.) use max_completion_tokens instead of max_tokens
+    use_new_api = MODEL_NAME.startswith(("gpt-5", "o1", "o3"))
+    
     for attempt in range(max_retries):
         try:
-            response = client.chat.completions.create(
-                model=MODEL_NAME,
-                max_tokens=1,
-                temperature=TEMPERATURE,
-                messages=messages,
-            )
+            if use_new_api:
+                response = client.chat.completions.create(
+                    model=MODEL_NAME,
+                    max_completion_tokens=4096,
+                    messages=messages,
+                )
+            else:
+                response = client.chat.completions.create(
+                    model=MODEL_NAME,
+                    max_tokens=1,
+                    temperature=TEMPERATURE,
+                    messages=messages,
+                )
             answer = response.choices[0].message.content.strip()
             if answer in ["J", "F"]:
                 return answer
