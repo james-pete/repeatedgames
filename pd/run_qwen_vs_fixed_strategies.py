@@ -4,6 +4,7 @@ Agent: Qwen 2.5-3B-Instruct (via RunPod API)
 Opponents: defect, cooperate, defect-once, tit-for-tat
 """
 
+import argparse
 import os
 import time
 import pandas as pd
@@ -16,6 +17,7 @@ RUNPOD_MODEL_NAME = os.environ.get("RUNPOD_MODEL_NAME", "qwen/qwen2.5-3b-instruc
 
 NUM_ROUNDS = 10
 NUM_REPETITIONS = 1  # Number of times to repeat each matchup
+TEMPERATURE = 1  # Default, can be overridden via command line
 
 # --- RunPod Client Setup ---
 client = OpenAI(
@@ -55,7 +57,7 @@ def act_qwen(text: str, round_num: int, opponent_last_move: str, max_retries: in
             response = client.chat.completions.create(
                 model=RUNPOD_MODEL_NAME,
                 max_tokens=1,
-                temperature=1.0,
+                temperature=TEMPERATURE,
                 messages=messages,
             )
             answer = response.choices[0].message.content.strip()
@@ -165,6 +167,12 @@ def play_game(agent_fn, opponent_fn, opponent_name: str) -> list[dict]:
 
 
 def main():
+    global TEMPERATURE
+    parser = argparse.ArgumentParser(description="Run Prisoner's Dilemma experiments")
+    parser.add_argument("--temperature", type=float, default=1, help="Temperature for LLM sampling (default: 1)")
+    args = parser.parse_args()
+    TEMPERATURE = args.temperature
+
     opponents = [
         (act_defect, "act_defect"),
         (act_cooperate, "act_cooperate"),
