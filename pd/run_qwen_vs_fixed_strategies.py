@@ -21,6 +21,23 @@ TEMPERATURE = 1  # Default, can be overridden via command line
 MODEL_NAME = "qwen/qwen2.5-3b-instruct"  # Default, can be overridden via command line
 client = None  # Set in main() based on --model argument
 
+SYSTEM_PROMPT = """
+Respond in the following format, with only the answer (J or F) between the <answer> tags:
+<reasoning>
+...
+</reasoning>
+<answer>
+...
+</answer>
+""".strip()
+
+
+def extract_xml_answer(text: str) -> str:
+    """Extract answer from XML-formatted response."""
+    answer = text.split("<answer>")[-1]
+    answer = answer.split("</answer>")[0]
+    return answer.strip()
+
 # --- Fixed Strategies ---
 
 def act_defect(text: str, round_num: int, opponent_last_move: str) -> str:
@@ -46,7 +63,10 @@ def act_tit_for_tat(text: str, round_num: int, opponent_last_move: str) -> str:
 
 def act_llm(text: str, round_num: int, opponent_last_move: str, max_retries: int = 5) -> str:
     """Query LLM via API."""
-    messages = [{"role": "user", "content": text}]
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": text}
+    ]
     
     # Newer OpenAI models (gpt-5, o1, o3, etc.) use max_completion_tokens instead of max_tokens
     use_new_api = MODEL_NAME.startswith(("gpt-5", "o1", "o3"))
@@ -62,11 +82,12 @@ def act_llm(text: str, round_num: int, opponent_last_move: str, max_retries: int
             else:
                 response = client.chat.completions.create(
                     model=MODEL_NAME,
-                    max_tokens=1,
+                    max_tokens=1024,
                     temperature=TEMPERATURE,
                     messages=messages,
                 )
-            answer = response.choices[0].message.content.strip()
+            raw_response = response.choices[0].message.content.strip()
+            answer = extract_xml_answer(raw_response)
             if answer in ["J", "F"]:
                 return answer
             # If response isn't J or F, try to extract it
@@ -113,8 +134,7 @@ def build_prompt(conversation_history: str, round_num: int) -> str:
     prompt = (
         question + conversation_history +
         f"You are currently playing round {round_num}.\n"
-        "Q: Which Option do you choose, Option J or Option F?\n"
-        "Provide no reasoning and answer with a single character."
+        "Q: Which Option do you choose, Option J or Option F?"
     )
     return prompt
 
